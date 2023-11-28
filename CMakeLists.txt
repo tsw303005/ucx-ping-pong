@@ -6,7 +6,7 @@
 
 cmake_minimum_required(VERSION 2.8)
 
-project(ucx_hello_world)
+project(ucx_ping_ping)
 
 find_package(UCX REQUIRED COMPONENTS ucp uct ucs)
 
