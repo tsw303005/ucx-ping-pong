@@ -82,7 +82,7 @@ static struct err_handling {
 static ucs_status_t ep_status   = UCS_OK;
 static uint16_t server_port     = 13337;
 static sa_family_t ai_family    = AF_INET;
-static long test_string_length  = 100;
+static long test_string_length  = 200;
 static const ucp_tag_t tag      = 0x1337a880u;
 static const ucp_tag_t tag_mask = UINT64_MAX;
 static const char *addr_msg_str = "UCX address message";
@@ -304,43 +304,6 @@ static int run_ucx_client(ucp_worker_h ucp_worker,
         raise(SIGKILL);
     }
 
-    /* Receive test string from server */
-    // for (;;) {
-    //     CHKERR_JUMP(ep_status != UCS_OK, "receive data: EP disconnected\n", err_ep);
-    //     /* Probing incoming events in non-block mode */
-    //     msg_tag = ucp_tag_probe_nb(ucp_worker, tag, tag_mask, 1, &info_tag);
-    //     if (msg_tag != NULL) {
-    //         /* Message arrived */
-    //         break;
-    //     } else if (ucp_worker_progress(ucp_worker)) {
-    //         /* Some events were polled; try again without going to sleep */
-    //         continue;
-    //     }
-
-    //     /* If we got here, ucp_worker_progress() returned 0, so we can sleep.
-    //      * Following blocked methods used to polling internal file descriptor
-    //      * to make CPU idle and don't spin loop
-    //      */
-    //     if (ucp_test_mode == TEST_MODE_WAIT) {
-    //         /* Polling incoming events*/
-    //         status = ucp_worker_wait(ucp_worker);
-    //         CHKERR_JUMP(status != UCS_OK, "ucp_worker_wait\n", err_ep);
-    //     } else if (ucp_test_mode == TEST_MODE_EVENTFD) {
-    //         status = test_poll_wait(ucp_worker);
-    //         CHKERR_JUMP(status != UCS_OK, "test_poll_wait\n", err_ep);
-    //     }
-    // }
-
-    // if (err_handling_opt.failure_mode == FAILURE_MODE_KEEPALIVE) {
-    //     fprintf(stderr, "Emulating unexpected failure after receive completion "
-    //                     "on client side, server should detect error by "
-    //                     "keepalive mechanism\n");
-    //     raise(SIGKILL);
-    // }
-
-    msg = mem_type_malloc(info_tag.length);
-    CHKERR_JUMP(msg == NULL, "allocate memory\n", err_ep);
-
     recv_param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK |
                               UCP_OP_ATTR_FIELD_DATATYPE |
                               UCP_OP_ATTR_FLAG_NO_IMM_CMPL;
@@ -348,9 +311,10 @@ static int run_ucx_client(ucp_worker_h ucp_worker,
     recv_param.cb.recv      = recv_handler;
 
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 5; i++) {
         for (;;) {
             msg_tag = ucp_tag_probe_nb(ucp_worker, tag, tag_mask, 1, &info_tag);
+
             if (msg_tag != NULL) {
                 /* Message arrived */
                 break;
@@ -369,6 +333,9 @@ static int run_ucx_client(ucp_worker_h ucp_worker,
             }
         }
 
+        msg = mem_type_malloc(info_tag.length);
+        CHKERR_JUMP(msg == NULL, "allocate memory\n", err_ep);
+
         request = ucp_tag_msg_recv_nbx(ucp_worker, msg, info_tag.length, msg_tag,
                                    &recv_param);
         status  = ucx_wait(ucp_worker, request, "receive", data_msg_str);
@@ -381,19 +348,19 @@ static int run_ucx_client(ucp_worker_h ucp_worker,
         if (str == NULL) {
             fprintf(stderr, "Memory allocation failed\n");
             ret = -1;
-            goto err_msg;
+            // goto err_msg;
         }
 
         mem_type_memcpy(str, msg + 1, test_string_length);
 
-        printf("\n ---- %s ----- \n", str);
         free(str);
+        free(msg);
     }
 
     ret = 0;
 
-err_msg:
-    mem_type_free(msg);
+// err_msg:
+//     mem_type_free(msg);
 err_ep:
     ep_close_err_mode(ucp_worker, server_ep);
 err:
@@ -509,8 +476,9 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
 
 
     // ping pong test
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 5; i++) {
         start_time = clock();
+
         ret = generate_test_string((char *)(msg + 1), test_string_length);
         request                 = ucp_tag_send_nbx(client_ep, msg, msg_len, tag,
                                                &send_param);
