@@ -1,1 +1,0 @@
-/usr/bin/cc -rdynamic CMakeFiles/ucx_ping_pong.dir/ucx_ping_pong.c.o -o ucx_ping_pong  -Wl,-rpath,/opt/ucx/lib /opt/ucx/lib/libucp.so /opt/ucx/lib/libuct.so /opt/ucx/lib/libucs.so 
